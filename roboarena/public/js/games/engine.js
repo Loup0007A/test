@@ -116,7 +116,28 @@ window.startGame = function() {
       <div style="font-size:3rem;margin-bottom:20px">🔧</div>
       <h2 style="font-family:'Orbitron',monospace;color:#00ff88">Jeu en construction</h2>
       <p style="color:#9090b0;margin:12px 0 24px">Ce jeu arrive bientôt !</p>
-      <button onclick="Arena.end('draw',0)" style="padding:12px 28px;border-radius:8px;background:#00ff88;color:#080813;font-family:'Orbitron',monospace;border:none;cursor:pointer;font-weight:700">Terminer</button>
+      <button id="endBtn" style="padding:12px 28px;border-radius:8px;background:#00ff88;color:#080813;font-family:'Orbitron',monospace;border:none;cursor:pointer;font-weight:700">Terminer</button>
     </div>
   `;
+
+  // ✅ AJOUT ICI (APRÈS le innerHTML)
+  const endBtn = document.getElementById("endBtn");
+  if (endBtn) {
+    endBtn.addEventListener("click", () => {
+      Arena.end('draw', 0);
+    });
+  }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+  const startBtn = document.getElementById("startBtn");
+  const restartBtn = document.getElementById("restartBtn");
+
+  if (startBtn) {
+    startBtn.addEventListener("click", () => startGame());
+  }
+
+  if (restartBtn) {
+    restartBtn.addEventListener("click", () => startGame());
+  }
+});
