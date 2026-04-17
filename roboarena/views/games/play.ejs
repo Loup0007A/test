@@ -18,7 +18,7 @@
           <div class="game-start-icon"><%= game.icon %></div>
           <h2><%= game.name %></h2>
           <p><%= game.desc %></p>
-          <button class="btn-primary btn-huge" id="startBtn" onclick="startGame()">⚡ Commencer le duel</button>
+          <button class="btn-primary btn-huge" id="startBtn">⚡ Commencer le duel</button>
           <% if (!user) { %>
             <p class="login-hint"><a href="/login">Connecte-toi</a> pour sauvegarder ton score</p>
           <% } %>
@@ -30,7 +30,7 @@
           <p id="resultMsg"></p>
           <div class="result-score">Score : <span id="resultScore">0</span></div>
           <div class="result-actions">
-            <button class="btn-primary" onclick="startGame()">🔄 Rejouer</button>
+            <button class="btn-primary" id="restartBtn">🔄 Rejouer</button>
             <a href="/games" class="btn-secondary">← Autres jeux</a>
           </div>
         </div>
