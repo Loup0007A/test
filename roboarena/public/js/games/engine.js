@@ -1,11 +1,19 @@
-// RoboArena - Game Engine
-// Shared infrastructure for all mini-games
+// RoboArena - DEBUG Game Engine
+// Every step is logged to find EXACT failure point
+
+console.log("[ENGINE] file loaded");
+
+function log(step, data) {
+  console.log(`[ENGINE] ${step}`, data ?? "");
+}
 
 // ─────────────────────────────────────────────
-// TOAST SYSTEM
+// TOAST (safe)
 // ─────────────────────────────────────────────
 
 function showToast(message, type) {
+  log("toast", { message, type });
+
   if (window._showToast) {
     window._showToast(message, type);
     return;
@@ -13,34 +21,13 @@ function showToast(message, type) {
 
   const toast = document.createElement('div');
 
-  const colors = {
-    success: 'background:#0e2a1e;border:1px solid #00ff88;color:#00ff88;',
-    error: 'background:#2a0e0e;border:1px solid #ff4444;color:#ff8080;',
-    info: 'background:#1a1a30;border:1px solid #444;color:#e8e8f0;'
-  };
-
   toast.style.cssText = `
     position:fixed;bottom:24px;right:24px;z-index:9999;
-    padding:14px 24px;border-radius:8px;font-family:'Orbitron',monospace;
-    font-size:0.88rem;max-width:320px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.4);
-    animation:toastIn 0.3s ease;
-    ${colors[type] || colors.info}
+    padding:10px 18px;background:#111;color:#0f0;
+    border:1px solid #0f0;font-family:monospace;
   `;
 
   toast.textContent = message;
-
-  if (!document.getElementById('_toastStyle')) {
-    const s = document.createElement('style');
-    s.id = '_toastStyle';
-    s.textContent = `
-      @keyframes toastIn {
-        from { transform:translateX(100px); opacity:0; }
-        to { transform:translateX(0); opacity:1; }
-      }
-    `;
-    document.head.appendChild(s);
-  }
 
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
@@ -59,168 +46,146 @@ const Arena = {
   running: false,
 
   getContainer() {
-    return document.getElementById('gameContainer');
+    const el = document.getElementById("gameContainer");
+    log("getContainer", el);
+    return el;
   },
 
-  show(elementId) {
-    ['gameStart', 'gameContainer', 'gameResult'].forEach(id => {
-      const el = document.getElementById(id);
+  show(id) {
+    log("show()", id);
+
+    ["gameStart", "gameContainer", "gameResult"].forEach(x => {
+      const el = document.getElementById(x);
+      log("toggle element", { id: x, exists: !!el });
+
       if (!el) return;
 
-      if (id === elementId) {
-        el.style.display = 'flex';
-
-        if (id === 'gameContainer') {
-          el.style.alignItems = 'center';
-          el.style.justifyContent = 'center';
-          el.style.flexDirection = 'column';
-          el.style.width = '100%';
-        }
-      } else {
-        el.style.display = 'none';
-      }
+      el.style.display = (x === id) ? "flex" : "none";
     });
   },
 
   start() {
+    log("Arena.start called");
+
     this.score = 0;
     this.startTime = Date.now();
     this.running = true;
-    this.show('gameContainer');
+
+    this.show("gameContainer");
+
+    const container = this.getContainer();
+    log("container after start", container);
   },
 
-  async end(result, score) {
+  end(result, score) {
+    log("Arena.end called", { result, score });
+
     this.running = false;
+    this.score = score ?? this.score;
 
-    this.score = (score !== undefined && score !== null)
-      ? score
-      : this.score;
+    const ri = document.getElementById("resultIcon");
+    const rt = document.getElementById("resultTitle");
+    const rm = document.getElementById("resultMsg");
+    const rs = document.getElementById("resultScore");
 
-    const duration = Math.round(
-      (Date.now() - (this.startTime || Date.now())) / 1000
-    );
+    log("result elements", {
+      ri: !!ri,
+      rt: !!rt,
+      rm: !!rm,
+      rs: !!rs
+    });
 
-    const icons = {
-      win: '🏆',
-      loss: '😔',
-      draw: '🤝'
-    };
-
-    const titles = {
-      win: 'Victoire !',
-      loss: 'Défaite...',
-      draw: 'Égalité !'
-    };
-
-    const msgs = {
-      win: 'Tu as battu le robot ! Bien joué.',
-      loss: 'Le robot a gagné cette fois. Réessaie !',
-      draw: 'Match nul. Revanche ?'
-    };
-
-    const ri = document.getElementById('resultIcon');
-    const rt = document.getElementById('resultTitle');
-    const rm = document.getElementById('resultMsg');
-    const rs = document.getElementById('resultScore');
-
-    if (ri) ri.textContent = icons[result] || '🤝';
-    if (rt) rt.textContent = titles[result] || 'Fin';
-    if (rm) rm.textContent = msgs[result] || '';
+    if (ri) ri.textContent = result;
+    if (rt) rt.textContent = result;
+    if (rm) rm.textContent = "debug";
     if (rs) rs.textContent = this.score;
 
-    this.show('gameResult');
-
-    if (this.isLogged) {
-      try {
-        const res = await fetch(`/games/${this.gameId}/result`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            score: this.score,
-            result,
-            duration
-          })
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          showToast(
-            data.message,
-            result === 'win' ? 'success' : 'info'
-          );
-        }
-      } catch (e) {
-        console.error("Score save failed", e);
-      }
-    }
-  },
-
-  addScore(points) {
-    this.score += (points || 0);
+    this.show("gameResult");
   }
 };
 
 window.Arena = Arena;
 
 // ─────────────────────────────────────────────
-// DEFAULT GAME START (fallback)
+// START GAME
 // ─────────────────────────────────────────────
 
 window.startGame = function () {
+  log("startGame CALLED");
+
   Arena.start();
 
-  Arena.getContainer().innerHTML = `
+  const container = Arena.getContainer();
+
+  log("container in startGame", container);
+
+  if (!container) {
+    console.error("[ENGINE] ❌ gameContainer NOT FOUND");
+    return;
+  }
+
+  container.innerHTML = `
     <div style="text-align:center;padding:40px">
-      <div style="font-size:3rem;margin-bottom:20px">🔧</div>
-      <h2 style="font-family:'Orbitron',monospace;color:#00ff88">
-        Jeu en construction
-      </h2>
-      <p style="color:#9090b0;margin:12px 0 24px">
-        Ce jeu arrive bientôt !
-      </p>
-      <button id="endBtn"
-        style="padding:12px 28px;border-radius:8px;
-        background:#00ff88;color:#080813;
-        font-family:'Orbitron',monospace;
-        border:none;cursor:pointer;font-weight:700">
-        Terminer
-      </button>
+      <h2>DEBUG MODE</h2>
+      <button id="endBtn">END TEST</button>
     </div>
   `;
 
+  log("innerHTML injected");
+
   const endBtn = document.getElementById("endBtn");
+
+  log("endBtn lookup", endBtn);
 
   if (endBtn) {
     endBtn.addEventListener("click", () => {
-      Arena.end('draw', 0);
+      log("endBtn CLICKED");
+      Arena.end("draw", 0);
     });
+  } else {
+    console.error("[ENGINE] ❌ endBtn NOT FOUND");
   }
 };
 
 // ─────────────────────────────────────────────
-// BUTTON BINDING (FIX FINAL)
+// INIT ENGINE (VERY IMPORTANT DEBUG)
 // ─────────────────────────────────────────────
 
 function initEngine() {
+  log("initEngine called");
+
   const startBtn = document.getElementById("startBtn");
   const restartBtn = document.getElementById("restartBtn");
 
+  log("buttons found", {
+    startBtn: !!startBtn,
+    restartBtn: !!restartBtn
+  });
+
   if (startBtn) {
     startBtn.addEventListener("click", () => {
+      log("startBtn CLICKED");
       startGame();
     });
+  } else {
+    console.error("[ENGINE] ❌ startBtn NOT FOUND");
   }
 
   if (restartBtn) {
     restartBtn.addEventListener("click", () => {
+      log("restartBtn CLICKED");
       startGame();
     });
   }
 }
 
-// Important: works even if DOM already loaded
+// robust init
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initEngine);
+  document.addEventListener("DOMContentLoaded", () => {
+    log("DOMContentLoaded fired");
+    initEngine();
+  });
 } else {
+  log("DOM already ready");
   initEngine();
 }
