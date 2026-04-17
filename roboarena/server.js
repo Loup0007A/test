@@ -149,6 +149,11 @@ Disallow: /logs/
 Sitemap: ${SITE_URL}/sitemap.xml`);
 });
 
+app.get('/cron', (req, res) => {
+  console.log('Cron exécuté', new Date());
+  res.send('OK');
+});
+
 // ─── SITEMAP ───
 app.get('/sitemap.xml', (req, res) => {
   const now = new Date().toISOString().split('T')[0];
