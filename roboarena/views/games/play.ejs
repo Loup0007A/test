@@ -69,8 +69,8 @@ const GAME_ID = '<%= game.id %>';
 const GAME_NAME = '<%= game.name %>';
 const IS_LOGGED = <%= user ? 'true' : 'false' %>;
 </script>
-<script src="/js/games/engine.js"></script>
 <script src="/js/games/stubs.js"></script>
-<script src="/js/games/<%= game.id %>.js" onerror=""></script>
+<script src="/js/games/engine.js"></script>
+<script src="/js/games/<%= game.id %>.js"></script>
 
 <%- include('../partials/footer') %>
