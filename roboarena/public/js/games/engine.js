@@ -152,32 +152,24 @@ window.startGame = function () {
 // ─────────────────────────────────────────────
 
 function initEngine() {
-  log("initEngine called");
+  console.log("[ENGINE] initEngine");
 
   const startBtn = document.getElementById("startBtn");
-  const restartBtn = document.getElementById("restartBtn");
 
-  log("buttons found", {
-    startBtn: !!startBtn,
-    restartBtn: !!restartBtn
-  });
+  console.log("[ENGINE] startBtn =", startBtn);
 
   if (startBtn) {
     startBtn.addEventListener("click", () => {
-      log("startBtn CLICKED");
-      startGame();
-    });
-  } else {
-    console.error("[ENGINE] ❌ startBtn NOT FOUND");
-  }
-
-  if (restartBtn) {
-    restartBtn.addEventListener("click", () => {
-      log("restartBtn CLICKED");
-      startGame();
+      console.log("[ENGINE] CLICK startBtn");
+      window.startGame();
     });
   }
 }
+
+window.addEventListener("load", () => {
+  console.log("[ENGINE] window load");
+  initEngine();
+});
 
 // robust init
 if (document.readyState === "loading") {
