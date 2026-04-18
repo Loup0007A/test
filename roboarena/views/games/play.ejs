@@ -1,0 +1,152 @@
+<%- include('../partials/header') %>
+
+<main class="game-page">
+
+  <!-- ── Header ── -->
+  <div class="gp-header">
+    <a href="/games" class="gp-back">← Jeux</a>
+    <div class="gp-title">
+      <span class="gp-icon"><%= game.icon %></span>
+      <h1><%= game.name %></h1>
+    </div>
+    <div class="gp-badges">
+      <span class="gp-badge"><%= game.category %></span>
+      <span class="gp-diff gp-diff-<%= game.difficulty.toLowerCase() %>"><%= game.difficulty %></span>
+      <% if (user) { %><span class="gp-user"><%= user.avatar %> <%= user.username %></span><% } %>
+    </div>
+  </div>
+
+  <!-- ── Layout ── -->
+  <div class="gp-layout">
+    <div class="gp-main">
+
+      <!-- Countdown panel -->
+      <div class="gp-countdown" id="gpCountdown">
+        <div class="gp-countdown-icon"><%= game.icon %></div>
+        <div class="gp-countdown-name"><%= game.name %></div>
+        <div class="gp-countdown-desc"><%= game.desc %></div>
+
+        <!-- SVG ring countdown -->
+        <div class="gp-countdown-ring">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <circle class="ring-bg"   cx="60" cy="60" r="54"/>
+            <circle class="ring-fill" cx="60" cy="60" r="54" id="ringFill"/>
+          </svg>
+          <div class="gp-countdown-num" id="gpCountNum">3</div>
+        </div>
+        <div class="gp-countdown-label">Démarrage dans…</div>
+
+        <% if (!user) { %>
+          <p class="gp-login-hint"><a href="/login">Connecte-toi</a> pour sauvegarder ton score</p>
+        <% } %>
+      </div>
+
+      <!-- Active game -->
+      <div class="gp-arena game-panel-hidden" id="gameContainer"></div>
+
+      <!-- Result panel -->
+      <div class="gp-result game-panel-hidden" id="gameResult">
+        <div class="gp-result-icon" id="resultIcon"></div>
+        <h2 class="gp-result-title" id="resultTitle"></h2>
+        <p class="gp-result-msg" id="resultMsg"></p>
+        <div class="gp-result-score">
+          Score
+          <span id="resultScore">0</span>
+        </div>
+      </div>
+
+      <!-- Reload bar — always visible, outside the panels -->
+      <div class="gp-reload-bar" id="gpReloadBar">
+        <button class="gp-reload-btn" onclick="location.reload()">↺ &nbsp;Rejouer</button>
+        <a href="/games" class="gp-reload-link">← Tous les jeux</a>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="gp-sidebar">
+      <div class="gp-card">
+        <div class="gp-card-label">Adversaire</div>
+        <div class="gp-robot">
+          <span class="gp-robot-face">🤖</span>
+          <span class="gp-robot-name">BOT-<%= game.id.toUpperCase().slice(0,4) %></span>
+          <span class="gp-robot-lvl">Niveau <%= game.difficulty === 'Facile' ? '1' : game.difficulty === 'Moyen' ? '3' : '5' %></span>
+          <div class="gp-robot-threat">
+            <div class="gp-robot-threat-fill" style="width:<%= game.difficulty === 'Facile' ? '33' : game.difficulty === 'Moyen' ? '66' : '95' %>%"></div>
+          </div>
+        </div>
+      </div>
+
+      <% if (leaderboard && leaderboard.length > 0) { %>
+      <div class="gp-card">
+        <div class="gp-card-label">Top scores</div>
+        <div class="gp-lb">
+          <% leaderboard.slice(0,5).forEach((e, i) => { %>
+          <div class="gp-lb-row">
+            <span class="gp-lb-rank"><%= i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1) %></span>
+            <span class="gp-lb-name"><%= e.username %></span>
+            <span class="gp-lb-score"><%= e.score %></span>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+    </aside>
+  </div>
+
+</main>
+
+<script>
+var GAME_ID   = '<%= game.id %>';
+var GAME_NAME = '<%= game.name %>';
+var IS_LOGGED = <%= user ? 'true' : 'false' %>;
+</script>
+<script src="/js/games/engine.js"></script>
+<script src="/js/games/stubs.js"></script>
+<script src="/js/games/<%= game.id %>.js" onerror=""></script>
+<script>
+// ── Auto-countdown with SVG ring ──
+(function() {
+  var total   = 3;
+  var current = total;
+  var numEl   = document.getElementById('gpCountNum');
+  var ringEl  = document.getElementById('ringFill');
+  var circumference = 339.3; // 2 * PI * 54
+
+  function setRing(fraction) {
+    if (!ringEl) return;
+    ringEl.style.strokeDashoffset = circumference * (1 - fraction);
+    // colour shift: green → orange → red
+    if (fraction > 0.66)      ringEl.style.stroke = '#00ff88';
+    else if (fraction > 0.33) ringEl.style.stroke = '#ffa500';
+    else                      ringEl.style.stroke = '#ff4444';
+  }
+
+  function tick() {
+    if (current < 0) {
+      var cd = document.getElementById('gpCountdown');
+      if (cd) cd.classList.add('game-panel-hidden');
+      if (typeof startGame === 'function') startGame();
+      // Fade-in reload bar
+      var bar = document.getElementById('gpReloadBar');
+      if (bar) bar.style.opacity = '0.4';
+      return;
+    }
+
+    if (numEl) {
+      numEl.textContent = current > 0 ? current : '▶';
+      numEl.classList.remove('gp-pop');
+      void numEl.offsetWidth;
+      numEl.classList.add('gp-pop');
+    }
+    setRing(current / total);
+    current--;
+    setTimeout(tick, current < 0 ? 400 : 1000);
+  }
+
+  // Small boot delay so all game scripts have run
+  setTimeout(tick, 350);
+})();
+</script>
+
+<%- include('../partials/footer') %>
