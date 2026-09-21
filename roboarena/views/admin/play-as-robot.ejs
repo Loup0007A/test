@@ -1,0 +1,195 @@
+<%- include('../partials/header') %>
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="admin-logo">⚙️ Admin Panel</div>
+    <nav class="admin-nav">
+      <a href="/admin" class="anav-link">📊 Dashboard</a>
+      <a href="/admin/users" class="anav-link">👥 Joueurs</a>
+      <a href="/admin/games" class="anav-link active">🎮 Jeux</a>
+      <a href="/admin/logs" class="anav-link">📋 Logs</a>
+      <a href="/admin/leaderboard" class="anav-link">🏆 Classement</a>
+      <hr>
+      <a href="/" class="anav-link">← Site</a>
+      <a href="/logout" class="anav-link danger">🚪 Déconnexion</a>
+    </nav>
+  </aside>
+  <main class="admin-main">
+    <div class="admin-header">
+      <a href="/admin/games" class="back-btn">← Jeux</a>
+      <h1>🤖 Jouer en tant que Robot — <%= game.name %></h1>
+    </div>
+
+    <% if (!robotSupported) { %>
+      <div class="robot-mode-banner">
+        <div class="robot-mode-icon">🚧</div>
+        <div>
+          <h2>Pas encore câblé pour le mode robot humain</h2>
+          <p><%= game.name %> tourne encore uniquement sur l'IA locale. Le système temps réel (Socket.IO)
+          est générique et déjà en place ; il suffit de brancher ce jeu dessus. Voir
+          <code>ROBOT_MODE.md</code> à la racine du projet pour la marche à suivre (4 étapes),
+          et <code>public/js/games/tictactoe.js</code> / <code>quickdraw.js</code> / <code>rockpaperbot.js</code>
+          pour des exemples déjà câblés.</p>
+        </div>
+      </div>
+      <div class="admin-section">
+        <a href="/games/<%= game.id %>" class="btn-primary" target="_blank">🎮 Ouvrir le jeu normalement</a>
+      </div>
+    <% } else { %>
+      <div class="robot-mode-banner" id="statusBanner">
+        <div class="robot-mode-icon" id="statusIcon">📡</div>
+        <div>
+          <h2 id="statusTitle">Hors ligne</h2>
+          <p id="statusDesc">Clique sur « Passer en direct » : le prochain joueur qui ouvre cette page
+            de jeu sera automatiquement mis en relation avec toi au lieu de l'IA.</p>
+        </div>
+      </div>
+
+      <div class="admin-section" style="display:flex;gap:12px;flex-wrap:wrap">
+        <button id="goLiveBtn" class="btn-success">🔴 Passer en direct</button>
+        <button id="goOfflineBtn" class="btn-danger" style="display:none">⏹ Revenir hors ligne</button>
+        <a href="/games/<%= game.id %>" class="btn-secondary" target="_blank">🎮 Ouvrir la page du jeu (pour tester)</a>
+      </div>
+
+      <div class="admin-section" id="controlPanel" style="display:none">
+        <h2>Panneau de contrôle</h2>
+
+        <div id="ctrl-quickdraw" class="robot-ctrl" style="display:none;text-align:center">
+          <p style="color:var(--text2);margin-bottom:16px">Attends le signal, puis clique le plus vite possible !</p>
+          <button id="qdBtn" disabled style="width:160px;height:160px;border-radius:50%;background:#333;border:4px solid #555;font-size:2.5rem;cursor:not-allowed;color:#fff">🎯</button>
+          <p id="qdStatus" style="margin-top:12px;color:var(--text3)">En attente du round...</p>
+        </div>
+
+        <div id="ctrl-rockpaperbot" class="robot-ctrl" style="display:none">
+          <p style="color:var(--text2);margin-bottom:16px">Arme ton prochain coup — il sera utilisé dès que le joueur joue :</p>
+          <div style="display:flex;gap:16px">
+            <button class="btn-secondary" data-move="rock" style="font-size:2.5rem;padding:16px">✊</button>
+            <button class="btn-secondary" data-move="paper" style="font-size:2.5rem;padding:16px">🖐️</button>
+            <button class="btn-secondary" data-move="scissors" style="font-size:2.5rem;padding:16px">✌️</button>
+          </div>
+          <p id="rpsArmed" style="margin-top:12px;color:var(--accent)">Coup armé : ✊ (par défaut)</p>
+          <div id="rpsLog" style="margin-top:16px;color:var(--text3);font-size:0.85rem"></div>
+        </div>
+
+        <div id="ctrl-tictactoe" class="robot-ctrl" style="display:none">
+          <p style="color:var(--text2);margin-bottom:16px" id="tttStatus">En attente du tour du joueur...</p>
+          <div id="tttBoard" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px"></div>
+        </div>
+      </div>
+    <% } %>
+  </main>
+</div>
+
+<% if (robotSupported) { %>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function() {
+  var GAME_ID = '<%= game.id %>';
+  var socket = io();
+
+  var statusTitle   = document.getElementById('statusTitle');
+  var statusDesc    = document.getElementById('statusDesc');
+  var statusIcon    = document.getElementById('statusIcon');
+  var goLiveBtn     = document.getElementById('goLiveBtn');
+  var goOfflineBtn  = document.getElementById('goOfflineBtn');
+  var controlPanel  = document.getElementById('controlPanel');
+
+  goLiveBtn.onclick = function() { socket.emit('robot:go-live', { gameId: GAME_ID }); };
+  goOfflineBtn.onclick = function() { socket.emit('robot:go-offline'); location.reload(); };
+
+  socket.on('robot:live-started', function() {
+    statusIcon.textContent = '🔴';
+    statusTitle.textContent = 'En direct — en attente d\'un joueur';
+    statusDesc.textContent = 'Ouvre la page du jeu dans un autre onglet (ou attends un vrai joueur) pour être mis en relation.';
+    goLiveBtn.style.display = 'none';
+    goOfflineBtn.style.display = 'inline-flex';
+  });
+
+  socket.on('robot:matched', function() {
+    statusIcon.textContent = '🟢';
+    statusTitle.textContent = 'Joueur connecté !';
+    statusDesc.textContent = 'Tu contrôles le robot en direct pour cette partie.';
+    controlPanel.style.display = 'block';
+    document.querySelectorAll('.robot-ctrl').forEach(function(el){ el.style.display = 'none'; });
+    var el = document.getElementById('ctrl-' + GAME_ID);
+    if (el) el.style.display = 'block';
+  });
+
+  socket.on('robot:opponent-left', function() {
+    statusIcon.textContent = '🔴';
+    statusTitle.textContent = 'En direct — en attente d\'un joueur';
+    statusDesc.textContent = 'Le joueur précédent est parti (ou a fini sa partie). En attente d\'un nouveau match...';
+    controlPanel.style.display = 'none';
+  });
+
+  socket.on('robot:error', function(msg) { alert(msg); });
+
+  var qdGoAt = null;
+
+  socket.on('robot:action', function(payload) {
+    if (payload.type === 'go' && GAME_ID === 'quickdraw') {
+      qdGoAt = Date.now();
+      var btn = document.getElementById('qdBtn');
+      btn.disabled = false;
+      btn.style.background = '#00ff88'; btn.style.cursor = 'pointer';
+      document.getElementById('qdStatus').textContent = 'MAINTENANT !';
+    }
+    if (payload.type === 'move-result' && GAME_ID === 'rockpaperbot') {
+      var icons = { rock: '✊', paper: '🖐️', scissors: '✌️' };
+      var log = document.getElementById('rpsLog');
+      var line = document.createElement('div');
+      line.textContent = 'Joueur: ' + (icons[payload.playerMove] || payload.playerMove) +
+        ' — Toi: ' + (icons[payload.robotMove] || payload.robotMove);
+      log.prepend(line);
+    }
+    if (payload.type === 'your-turn' && GAME_ID === 'tictactoe') {
+      renderTTTBoard(payload.board);
+      document.getElementById('tttStatus').textContent = 'À toi de jouer !';
+    }
+  });
+
+  var qdBtn = document.getElementById('qdBtn');
+  if (qdBtn) {
+    qdBtn.onclick = function() {
+      if (!qdGoAt) return;
+      var reactionMs = Date.now() - qdGoAt;
+      qdGoAt = null;
+      qdBtn.disabled = true;
+      qdBtn.style.background = '#333'; qdBtn.style.cursor = 'not-allowed';
+      document.getElementById('qdStatus').textContent = 'Envoyé (' + reactionMs + 'ms) — en attente du prochain round...';
+      socket.emit('robot:action', { type: 'admin-clicked', payload: { reactionMs: reactionMs } });
+    };
+  }
+
+  document.querySelectorAll('#ctrl-rockpaperbot [data-move]').forEach(function(btn) {
+    btn.onclick = function() {
+      var move = btn.getAttribute('data-move');
+      var icons = { rock: '✊', paper: '🖐️', scissors: '✌️' };
+      document.getElementById('rpsArmed').textContent = 'Coup armé : ' + icons[move];
+      socket.emit('robot:action', { type: 'arm-move', payload: { move: move } });
+    };
+  });
+
+  function renderTTTBoard(board) {
+    var el = document.getElementById('tttBoard');
+    el.innerHTML = '';
+    board.forEach(function(cell, i) {
+      var btn = document.createElement('button');
+      btn.textContent = cell || '';
+      btn.disabled = !!cell;
+      btn.style.cssText = 'aspect-ratio:1;font-size:1.8rem;border-radius:8px;background:var(--surface);' +
+        'border:2px solid var(--border);cursor:' + (cell ? 'default' : 'pointer') + ';' +
+        'color:' + (cell === 'X' ? 'var(--accent)' : 'var(--accent3)');
+      if (!cell) {
+        btn.onclick = function() {
+          socket.emit('robot:action', { type: 'move', payload: { index: i } });
+          document.getElementById('tttStatus').textContent = 'Coup envoyé — en attente du joueur...';
+        };
+      }
+      el.appendChild(btn);
+    });
+  }
+})();
+</script>
+<% } %>
+
+<%- include('../partials/footer') %>
